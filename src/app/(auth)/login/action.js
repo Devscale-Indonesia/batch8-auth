@@ -4,6 +4,7 @@ import { prisma } from "@/utils/prisma";
 import { cookies } from "next/headers";
 import bcrypt from "bcrypt";
 import { redirect } from "next/navigation";
+import jwt from "jsonwebtoken";
 
 export async function loginAction(_, formData) {
   const cookieStore = await cookies();
@@ -41,17 +42,12 @@ export async function loginAction(_, formData) {
     };
   }
 
-  // Create Session
-  const newSession = await prisma.session.create({
-    data: {
-      userId: user.id,
-    },
-  });
+  // Generate Token
+  const token = jwt.sign({ id: user.id, name: user.name }, process.env.JWT_SECRET);
 
-  cookieStore.set("sessionId", newSession.id, {
+  cookieStore.set("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // https://something.com --> ....Intercept.... -> http://localhost
-    sameSite: true,
+    sameSite: "lax",
   });
 
   redirect("/dashboard");

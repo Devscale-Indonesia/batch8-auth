@@ -2,25 +2,23 @@ import { prisma } from "@/utils/prisma";
 import { Button } from "@heroui/react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import jwt from "jsonwebtoken";
 
 export default async function Layout({ children }) {
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get("sessionId")?.value;
+  const token = cookieStore.get("token")?.value;
 
-  if (!sessionId) {
+  if (!token) {
     redirect("/login");
   }
 
-  const checkSession = await prisma.session.findUnique({
-    where: {
-      id: sessionId,
-    },
-    include: {
-      user: true,
-    },
-  });
+  let username = "";
 
-  if (!checkSession) {
+  try {
+    const payload = jwt.verify(token, "secretKey");
+    username = payload.name;
+  } catch (error) {
+    console.error(error);
     redirect("/login");
   }
 
@@ -28,14 +26,7 @@ export default async function Layout({ children }) {
     "use server";
 
     const cookieStore = await cookies();
-    cookieStore.delete("sessionId");
-
-    await prisma.session.delete({
-      where: {
-        id: checkSession.id,
-      },
-    });
-    redirect("/login");
+    cookieStore.delete("token");
   }
 
   return (
@@ -44,7 +35,7 @@ export default async function Layout({ children }) {
         <div>devscale.</div>
 
         <div>
-          <div>{checkSession.user.name}</div>
+          <div>{username}</div>
           <form action={logoutAction}>
             <Button type="submit">Logout</Button>
           </form>
